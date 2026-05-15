@@ -101,7 +101,14 @@ def infer():
         _last_result = result
         return jsonify(result)
 
-    result = _predictor.predict(feats)
+    try:
+        result = _predictor.predict(feats)
+    except Exception as exc:
+        import traceback, sys
+        traceback.print_exc(file=sys.stderr)
+        return jsonify({"prediction": "NONE", "reason": "inference_error",
+                        "error": str(exc)}), 500
+
     _last_result = result
     return jsonify(result)
 

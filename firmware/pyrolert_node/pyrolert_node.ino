@@ -30,7 +30,7 @@
 // ================================================================
 #define WIFI_SSID       "PyroLert"
 #define WIFI_PASSWORD   "pyrolert"
-#define BACKEND_URL     "https://pyrolert-backend.onrender.com/infer"
+#define BACKEND_URL     "https://your-app-name.koyeb.app/infer"
 
 #define SAMPLE_INTERVAL_MS  1000   // 1 Hz
 #define WARMUP_SECONDS      180    // 3 min; bump to 600+ for real data collection
@@ -74,6 +74,13 @@ struct PMSData {
 unsigned long bootMillis      = 0;
 unsigned long lastSampleMs    = 0;
 PMSData       latestPMS;
+
+// Persistent TLS + HTTP objects — declared globally so the TLS session is
+// reused across requests instead of re-negotiated every second.  Re-negotiating
+// on every loop iteration allocates ~50 KB from the mbedTLS heap and causes
+// progressive fragmentation that exhausts free memory after ~30 samples.
+WiFiClientSecure tlsClient;
+HTTPClient       http;
 
 // ---------- WiFi ----------
 void connectWiFi() {
@@ -145,6 +152,10 @@ void setup() {
 
   connectWiFi();
 
+  // Configure the persistent TLS client once — reused for every POST.
+  tlsClient.setInsecure();
+  http.setReuse(true);
+
   bootMillis = millis();
   Serial.printf("[PyroLert] Warming up for %d s. Predictions will return NONE until ready.\n",
                 WARMUP_SECONDS);
@@ -157,7 +168,6 @@ void loop() {
 
   unsigned long now = millis();
   if (now - lastSampleMs < SAMPLE_INTERVAL_MS) return;
-  lastSampleMs = now;
 
   // ---- Reconnect if needed ----
   if (WiFi.status() != WL_CONNECTED) {
@@ -209,11 +219,7 @@ void loop() {
   serializeJson(doc, body);
 
   // ---- POST to backend ----
-  WiFiClientSecure client;
-  client.setInsecure();   // Skip TLS cert check — acceptable for a closed sensor network
-
-  HTTPClient http;
-  http.begin(client, BACKEND_URL);
+  http.begin(tlsClient, BACKEND_URL);
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(HTTP_TIMEOUT_MS);
 
@@ -243,9 +249,18 @@ void loop() {
     }
   } else {
     Serial.printf("[HTTP] POST failed, code=%d\n", httpCode);
+    // Force a fresh TLS handshake next iteration — the connection may be
+    // stale (WiFi reconnect, Render keep-alive timeout, cold start).
+    http.end();
+    tlsClient.stop();
+    lastSampleMs = millis();
+    return;
   }
 
   http.end();
+  // Timestamp measured after the blocking POST so the next sample fires
+  // SAMPLE_INTERVAL_MS after this one completes, not after it started.
+  lastSampleMs = millis();
 
   // ---- Debug echo ----
   Serial.printf("[Raw]  mq135=%4d mq4=%4d mq5=%4d mq6=%4d mq7=%4d mq8=%4d"
