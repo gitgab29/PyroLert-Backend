@@ -28,13 +28,13 @@
 // ================================================================
 // User config — edit these before flashing
 // ================================================================
-#define WIFI_SSID       "YOUR_SSID"
-#define WIFI_PASSWORD   "YOUR_PASSWORD"
+#define WIFI_SSID       "PyroLert"
+#define WIFI_PASSWORD   "pyrolert"
 #define BACKEND_URL     "https://pyrolert-backend.onrender.com/infer"
 
 #define SAMPLE_INTERVAL_MS  1000   // 1 Hz
 #define WARMUP_SECONDS      180    // 3 min; bump to 600+ for real data collection
-#define HTTP_TIMEOUT_MS     3000   // max wait per POST (Render cold-start can be slow)
+#define HTTP_TIMEOUT_MS     10000  // TLS handshake alone can take 2-5s on ESP32
 // ================================================================
 
 // ---------- Pins ----------
@@ -78,7 +78,9 @@ PMSData       latestPMS;
 // ---------- WiFi ----------
 void connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) return;
-  Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
+  WiFi.disconnect(true);
+  delay(200);
+  Serial.printf("[WiFi] Connecting to %s\n", WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   unsigned long t0 = millis();
   while (WiFi.status() != WL_CONNECTED) {
