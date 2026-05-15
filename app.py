@@ -51,6 +51,7 @@ def latest():
         "n_samples":          _state.n_samples,
         "warmed_up":          _state.n_samples > 30,
         "prediction":         None,
+        "smoke_detected":     False,
         "s1_proba":           None,
         "s2_proba":           None,
         "confidence":         None,
@@ -90,14 +91,15 @@ def infer():
     _last_raw  = raw
 
     if not raw.get("pms_valid", 1):
-        result = {"prediction": "NONE", "reason": "pms_invalid"}
+        result = {"prediction": "NONE", "smoke_detected": False, "reason": "pms_invalid"}
         _last_result = result
         return jsonify(result)
 
     feats = _state.update(raw)
 
     if feats is None:
-        result = {"prediction": "NONE", "reason": "warmup", "n": _state.n_samples}
+        result = {"prediction": "NONE", "smoke_detected": False,
+                  "reason": "warmup", "n": _state.n_samples}
         _last_result = result
         return jsonify(result)
 
@@ -106,8 +108,8 @@ def infer():
     except Exception as exc:
         import traceback, sys
         traceback.print_exc(file=sys.stderr)
-        return jsonify({"prediction": "NONE", "reason": "inference_error",
-                        "error": str(exc)}), 500
+        return jsonify({"prediction": "NONE", "smoke_detected": False,
+                        "reason": "inference_error", "error": str(exc)}), 500
 
     _last_result = result
     return jsonify(result)

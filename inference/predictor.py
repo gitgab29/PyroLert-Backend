@@ -72,9 +72,11 @@ class Predictor:
         x_s1 = np.array([feat[f] for f in self._s1_feats], dtype=np.float64).reshape(1, -1)
         s1_proba = float(self._s1.predict(x_s1)[0])
 
-        if s1_proba < S1_THRESHOLD:
-            return {"prediction": "NONE", "s1_proba": s1_proba,
-                    "s2_proba": None, "confidence": None}
+        smoke_detected = s1_proba >= S1_THRESHOLD
+
+        if not smoke_detected:
+            return {"prediction": "NONE", "smoke_detected": smoke_detected,
+                    "s1_proba": s1_proba, "s2_proba": None, "confidence": None}
 
         # --- Stage 2 base features (72) ---
         x_s2_base = np.array([feat[f] for f in self._s2_base_feats], dtype=np.float32)
@@ -108,6 +110,7 @@ class Predictor:
         if confidence < S2_CONFIDENCE:
             return {
                 "prediction": "NONE",
+                "smoke_detected": smoke_detected,
                 "s1_proba": s1_proba,
                 "s2_proba": s2_proba,
                 "confidence": confidence,
@@ -117,6 +120,7 @@ class Predictor:
         prediction = S2_CLASSES[int(np.argmax(avg_proba))]
         return {
             "prediction": prediction,
+            "smoke_detected": smoke_detected,
             "s1_proba": s1_proba,
             "s2_proba": s2_proba,
             "confidence": confidence,
