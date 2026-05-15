@@ -30,7 +30,7 @@
 // ================================================================
 #define WIFI_SSID       "PyroLert"
 #define WIFI_PASSWORD   "pyrolert"
-#define BACKEND_URL     "https://your-app-name.koyeb.app/infer"
+#define BACKEND_URL     "https://pyrolert-backend.onrender.com/infer"
 
 #define SAMPLE_INTERVAL_MS  1000   // 1 Hz
 #define WARMUP_SECONDS      180    // 3 min; bump to 600+ for real data collection
