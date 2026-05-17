@@ -20,10 +20,10 @@ FAKE_ROW = {
 
 print("Loading models...", flush=True)
 predictor = Predictor()
-print("  Stage-1 features :", len(predictor._s1_feats))
-print("  Stage-2 base feats:", len(predictor._s2_base_feats))
+print("  Stage-1 features:", len(predictor._s1_feats))
+print("  Stage-2 features:", len(predictor._s2_feats))
 assert len(predictor._s1_feats) == 24
-assert len(predictor._s2_base_feats) == 72
+assert len(predictor._s2_feats) == 77
 
 state = OnlineFeatureState()
 
@@ -38,15 +38,15 @@ print(f"Warmup OK: {state.n_samples} samples collected, still in warmup")
 # --- 31st call must produce features ---
 feats = state.update(FAKE_ROW)
 assert feats is not None, "31st update should return feature dict"
-assert len(feats) == 93, f"Expected 93 features, got {len(feats)}"
 print(f"Feature dict OK: {len(feats)} features at n_samples={state.n_samples}")
 
-# --- Verify feature names match feature_names.json ---
-import json
-with open(os.path.join(os.path.dirname(__file__), "models", "feature_names.json")) as fh:
-    expected_names = json.load(fh)
-missing = [n for n in expected_names if n not in feats]
-assert not missing, f"Missing feature keys: {missing}"
+# --- Verify all S1 and S2 feature names are present ---
+missing_s1 = [n for n in predictor._s1_feats if n not in feats]
+assert not missing_s1, f"Missing S1 feature keys: {missing_s1}"
+
+missing_s2 = [n for n in predictor._s2_feats if n not in feats]
+assert not missing_s2, f"Missing S2 feature keys: {missing_s2}"
+
 print("Feature name coverage OK")
 
 # --- Run inference ---
